@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::title}, ~{::main})}">
+
+<head>
+    <title th:text="${quizDto.id == null ? 'Create New Quiz' : 'Edit Quiz'} + ' for ' + ${className}">Create/Edit Quiz</title>
+</head>
+
+<body>
+
+<main th:fragment="main">
+    <h2 class="text-2xl font-semibold text-gray-800 mb-1"
+        th:text="${quizDto.id == null ? 'Create New Quiz' : 'Edit Quiz'}">Create New Quiz</h2>
+    <p class="text-sm text-gray-500 mb-6" th:text="'For Class: ' + ${className}">For Class: [Class Name]</p>
+
+    <div th:if="${#fields.hasErrors('${quizDto.*}')}" class="alert alert-danger mb-4">
+        <p>Please correct the errors below:</p>
+        <ul>
+            <li th:each="err : ${#fields.errors('quizDto.*')}" th:text="${err}"></li>
+        </ul>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger mb-4" th:text="${errorMessage}"></div>
+
+    <form th:action="${quizDto.id == null ? '/teacher/quizzes/create/' + classId : '/teacher/quizzes/update/' + quizDto.id}"
+          th:object="${quizDto}" method="post" class="space-y-6">
+
+        <input type="hidden" th:if="${quizDto.id != null}" th:field="*{id}" />
+        <input type="hidden" name="classId" th:value="${classId}" />
+
+        <div class="bg-white p-5 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+            <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Quiz Details</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Quiz Title</label>
+                    <input type="text" id="title" th:field="*{title}" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                           placeholder="e.g., Chapter 1 Review"/>
+                    <p th:if="${#fields.hasErrors('title')}" th:errors="*{title}" class="text-xs text-red-600 mt-1"></p>
+                </div>
+                 <div>
+                    <label for="timeLimitMinutes" class="block text-sm font-medium text-gray-700 mb-1">Time Limit (Minutes)</label>
+                    <input type="number" id="timeLimitMinutes" th:field="*{timeLimitMinutes}" min="0" step="1"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                           placeholder="Leave blank for no limit"/>
+                    <p th:if="${#fields.hasErrors('timeLimitMinutes')}" th:errors="*{timeLimitMinutes}" class="text-xs text-red-600 mt-1"></p>
+                </div>
+            </div>
+             <div class="mt-4">
+                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
+                <textarea id="description" th:field="*{description}" rows="3"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                          placeholder="Instructions or details about the quiz..."></textarea>
+                <p th:if="${#fields.hasErrors('description')}" th:errors="*{description}" class="text-xs text-red-600 mt-1"></p>
+            </div>
+             <div class="mt-4">
+                 <label for="dueDate" class="block text-sm font-medium text-gray-700 mb-1">Due Date (Optional)</label>
+                 <input type="datetime-local" id="dueDate" th:field="*{dueDate}"
+                        class="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"/>
+                 <p th:if="${#fields.hasErrors('dueDate')}" th:errors="*{dueDate}" class="text-xs text-red-600 mt-1"></p>
+             </div>
+        </div>
+
+        <div id="questions-container">
+            <h3 class="text-xl font-semibold text-gray-700 mb-4">Questions</h3>
+            <th:block th:if="${quizDto.questions != null}">
+                <div th:each="question, qStat : *{questions}"
+                     class="border border-gray-300 rounded-lg p-4 mb-6 bg-white shadow"
+                     th:id="'question-block-' + ${qStat.index}">
+
+                    <input type="hidden" th:field="*{questions[__${qStat.index}__].id}" />
+                    <input type="hidden" class="question-order-input" th:field="*{questions[__${qStat.index}__].questionOrder}" th:value="${qStat.index}"/>
+
+                    <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-200">
+                        <span class="text-lg font-semibold text-gray-700" th:text="'Question ' + (${qStat.index} + 1)">Question #</span>
+                        <button type="button"
+                                class="text-xs px-2 py-1 rounded border transition-colors duration-150 bg-red-50 text-red-700 border-red-200 hover:bg-red-100 remove-question-btn"
+                                th:data-question-index="${qStat.index}">
+                            <i class="fas fa-trash-alt mr-1"></i> Remove Question
+                        </button>
+                    </div>
+
+                    <div class="mb-3">
+                        <label th:for="'questionText' + ${qStat.index}" class="block text-sm font-medium text-gray-700 mb-1">Question Text</label>
+                        <textarea th:field="*{questions[__${qStat.index}__].questionText}" rows="3" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"></textarea>
+                        <p th:if="${#fields.hasErrors('questions[__${qStat.index}__].questionText')}" th:errors="*{questions[__${qStat.index}__].questionText}" class="text-xs text-red-600 mt-1"></p>
+                    </div>
+
+                    <div class="mb-4">
+                        <label th:for="'points' + ${qStat.index}" class="block text-sm font-medium text-gray-700 mb-1">Points</label>
+                        <input type="number" th:field="*{questions[__${qStat.index}__].points}" min="0" step="1" required
+                            class="w-full sm:w-1/2 md:w-1/3 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"/>
+                        <p th:if="${#fields.hasErrors('questions[__${qStat.index}__].points')}" th:errors="*{questions[__${qStat.index}__].points}" class="text-xs text-red-600 mt-1"></p>
+                    </div>
+
+                </div> </th:block>
+        </div>
+
+        <div class="mt-6">
+            <button type="button" id="add-question-btn" class="btn btn-secondary">
+                <i class="fas fa-plus mr-2"></i> Add Another Question
+            </button>
+        </div>
+
+        <div class="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200 mt-8">
+            <a th:href="@{/teacher/classes/{classId}/quizzes(classId=${classId})}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary" th:text="${quizDto.id == null ? 'Create Quiz' : 'Update Quiz'}">
+                Create Quiz
+            </button>
+        </div>
+
+    </form>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+
+        const questionsContainer = document.getElementById('questions-container');
+        const addQuestionBtn = document.getElementById('add-question-btn');
+        let questionIndex = document.querySelectorAll('.border.border-gray-300.rounded-lg.p-4.mb-6.bg-white.shadow').length;
+
+        // Function to update indices when questions are added/removed
+        function updateIndices() {
+            const questionBlocks = questionsContainer.querySelectorAll('.border.border-gray-300.rounded-lg.p-4.mb-6.bg-white.shadow');
+            questionIndex = questionBlocks.length; // Update global index count
+
+            questionBlocks.forEach((qBlock, qIdx) => {
+                qBlock.id = `question-block-${qIdx}`;
+                // Update Question Number Display
+                qBlock.querySelector('.text-lg.font-semibold.text-gray-700').textContent = `Question ${qIdx + 1}`;
+                // Update Remove Button Data Attribute
+                qBlock.querySelector('.remove-question-btn').dataset.questionIndex = qIdx;
+                // Update Hidden Order Input
+                const orderInput = qBlock.querySelector('.question-order-input');
+                if (orderInput) {
+                    orderInput.value = qIdx;
+                    orderInput.name = `questions[${qIdx}].questionOrder`;
+                }
+
+                // Update IDs and Names for Labels and Inputs within the block
+                qBlock.querySelectorAll('label[for^="questionText"], textarea[id^="questionText"], label[for^="points"], input[id^="points"]').forEach(el => {
+                    const idMatch = el.id ? el.id.match(/^(.*?)(\d+)$/) : null;
+                    const forMatch = el.htmlFor ? el.htmlFor.match(/^(.*?)(\d+)$/) : null;
+                    const baseId = idMatch ? idMatch[1] : (forMatch ? forMatch[1] : null);
+                    const baseName = el.name ? el.name.replace(/\[\d+\]/, `[${qIdx}]`) : null;
+
+                    if (el.id && baseId) el.id = `${baseId}${qIdx}`;
+                    if (el.htmlFor && baseId) el.htmlFor = `${baseId}${qIdx}`;
+                    if (el.name && baseName) el.name = baseName;
+                });
+
+                // Update hidden ID field name
+                 const hiddenIdInput = qBlock.querySelector('input[type="hidden"][name^="questions["]');
+                 if (hiddenIdInput && hiddenIdInput.name.endsWith("].id")) {
+                     hiddenIdInput.name = `questions[${qIdx}].id`;
+                 }
+            });
+        }
+
+        // Event listener for adding a new question
+        addQuestionBtn.addEventListener('click', () => {
+            const qIdx = questionIndex; // Use current count as the index for the new question
+            // Simplified HTML for a short answer question block
+            const newQuestionHTML = `
+                <div class="border border-gray-300 rounded-lg p-4 mb-6 bg-white shadow" id="question-block-${qIdx}">
+                    <input type="hidden" name="questions[${qIdx}].id" value="" />
+                    <input type="hidden" class="question-order-input" name="questions[${qIdx}].questionOrder" value="${qIdx}" />
+                    <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-200">
+                        <span class="text-lg font-semibold text-gray-700">Question ${qIdx + 1}</span>
+                        <button type="button" class="text-xs px-2 py-1 rounded border transition-colors duration-150 bg-red-50 text-red-700 border-red-200 hover:bg-red-100 remove-question-btn" data-question-index="${qIdx}">
+                            <i class="fas fa-trash-alt mr-1"></i> Remove Question
+                        </button>
+                    </div>
+                    <div class="mb-3">
+                        <label for="questionText${qIdx}" class="block text-sm font-medium text-gray-700 mb-1">Question Text</label>
+                        <textarea name="questions[${qIdx}].questionText" id="questionText${qIdx}" rows="3" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label for="points${qIdx}" class="block text-sm font-medium text-gray-700 mb-1">Points</label>
+                        <input type="number" name="questions[${qIdx}].points" id="points${qIdx}" value="1" min="0" step="1" required class="w-full sm:w-1/2 md:w-1/3 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+                </div>`;
+
+            // Insert the new question block before the "Add Question" button's container
+            addQuestionBtn.parentElement.insertAdjacentHTML('beforebegin', newQuestionHTML);
+            questionIndex++; // Increment the global index count
+        });
+
+        // Event listener for removing a question (using event delegation)
+        questionsContainer.addEventListener('click', (e) => {
+            const removeBtn = e.target.closest('.remove-question-btn');
+            if (removeBtn) {
+                const qBlock = removeBtn.closest('.border.border-gray-300.rounded-lg.p-4.mb-6.bg-white.shadow');
+                // Only allow removal if more than one question exists
+                if (qBlock && questionsContainer.querySelectorAll('.border.border-gray-300.rounded-lg.p-4.mb-6.bg-white.shadow').length > 1) {
+                    qBlock.remove();
+                    updateIndices(); // Re-index remaining questions
+                } else {
+                    alert("A quiz must have at least one question.");
+                }
+            }
+        });
+
+        // Initial index update on page load (in case of editing an existing quiz)
+        document.addEventListener('DOMContentLoaded', updateIndices);
+
+        /*]]>*/
+    </script>
+
+</main>
+</body>
+</html>

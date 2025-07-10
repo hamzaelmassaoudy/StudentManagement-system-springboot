@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::title}, ~{::main})}">
+
+<head>
+    <title th:text="'Quiz Details: ' + ${quiz.title}">Quiz Details</title>
+    <style>
+        /* Styles for question display */
+        .quiz-details-question-card {
+            @apply bg-white p-5 mb-4 rounded-lg border border-gray-200 shadow-sm;
+        }
+        .question-text-details {
+            @apply text-base font-semibold text-gray-800 mb-2;
+        }
+        .question-info {
+            @apply text-xs text-gray-500 mb-3 border-b pb-2;
+        }
+        /* Styles for options */
+        .option-item-details {
+            @apply flex items-center space-x-2 py-1 px-2 rounded;
+        }
+        .option-item-details.correct {
+             @apply bg-green-100 border border-green-200; /* Highlight correct option */
+        }
+         .option-item-details.incorrect {
+             @apply bg-gray-50;
+        }
+        .option-indicator {
+            @apply w-5 h-5 flex-shrink-0 text-lg;
+        }
+        .option-indicator.correct { @apply text-green-600; }
+        .option-indicator.incorrect { @apply text-gray-400; }
+
+        .option-text-details {
+            @apply text-sm text-gray-700;
+        }
+        .correct .option-text-details { @apply font-medium text-green-800; }
+
+    </style>
+</head>
+
+<body>
+
+<main th:fragment="main">
+    <div class="flex flex-col sm:flex-row justify-between items-start mb-6 pb-4 border-b border-gray-200">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800" th:text="${quiz.title}">Quiz Title</h2>
+            <p class="text-sm text-gray-600 mt-1" th:text="${quiz.description}">Quiz description...</p>
+            <p class="text-xs text-gray-500 mt-1">
+                Class: <span th:text="${quiz.schoolClass?.name}">Class Name</span> |
+                Due: <span th:text="${quiz.dueDate != null ? #temporals.format(quiz.dueDate, 'MMM dd, yyyy HH:mm') : 'N/A'}">Due Date</span> |
+                Time Limit: <span th:text="${quiz.timeLimitMinutes != null ? quiz.timeLimitMinutes + ' min' : 'None'}">Limit</span>
+            </p>
+        </div>
+        <div class="mt-3 sm:mt-0 flex items-center space-x-2">
+             <a th:href="@{/teacher/classes/{classId}/quizzes(classId=${quiz.schoolClass.id})}" class="btn btn-secondary btn-sm">
+                 &larr; Back to Quizzes
+             </a>
+             <a href="#" th:href="@{/teacher/quizzes/{quizId}/edit(quizId=${quiz.id})}" class="btn btn-warning btn-sm">
+                 <i class="fas fa-edit mr-1"></i> Edit
+             </a>
+             <a href="#" th:href="@{/teacher/quizzes/{quizId}/attempts(quizId=${quiz.id})}" class="btn btn-info btn-sm">
+                 <i class="fas fa-list-ol mr-1"></i> View Attempts
+             </a>
+        </div>
+    </div>
+
+    <h3 class="text-xl font-semibold text-gray-700 mb-4">Quiz Questions</h3>
+    <div th:if="${quiz.questions != null and !quiz.questions.isEmpty()}">
+        <div th:each="question, qStat : ${quiz.questions}" class="quiz-details-question-card">
+            <p class="question-text-details">
+                <strong th:text="${qStat.index + 1} + '. '">1. </strong>
+                <span th:text="${question.questionText}">Question text goes here...</span>
+            </p>
+            <p class="question-info">
+                 Type: <span class="font-medium" th:text="${#strings.capitalizeWords(#strings.toLowerCase(question.questionType.name().replace('_', ' ')))}">Type</span> |
+                 Points: <span class="font-medium" th:text="${question.points}">1</span>
+            </p>
+
+            <div th:switch="${question.questionType.name()}">
+
+                <div th:case="'MULTIPLE_CHOICE'" class="space-y-2">
+                     <div th:each="option : ${question.options}"
+                          class="option-item-details"
+                          th:classappend="${option.isCorrect() ? 'correct' : 'incorrect'}">
+                          <span class="option-indicator" th:classappend="${option.isCorrect() ? 'correct' : 'incorrect'}">
+                              <i th:class="${option.isCorrect() ? 'fas fa-check-circle' : 'far fa-circle'}"></i>
+                          </span>
+                          <span class="option-text-details" th:text="${option.optionText}">Option text</span>
+                     </div>
+                </div>
+
+                <div th:case="'SHORT_ANSWER'">
+                    <p class="text-sm text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-200">
+                        (Short Answer Question - Requires manual grading)
+                    </p>
+                </div>
+
+                <div th:case="*">
+                    <p class="text-red-500 italic">Unknown question type.</p>
+                </div>
+            </div>
+        </div> </div>
+    <div th:unless="${quiz.questions != null and !quiz.questions.isEmpty()}" class="text-center text-gray-500 italic py-4">
+        This quiz currently has no questions.
+    </div>
+
+     <div class="mt-8 text-center">
+         <a th:href="@{/dashboard}" class="text-sm text-purple-600 hover:underline">&larr; Back to Dashboard</a>
+    </div>
+
+</main>
+
+</body>
+</html>

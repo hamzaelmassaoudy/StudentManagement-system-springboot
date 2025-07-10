@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::title}, ~{::main})}">
+
+<head>
+    <title th:text="'Quiz Result: ' + ${quiz.title}">Quiz Result</title>
+    </head>
+
+<body>
+
+<main th:fragment="main">
+    <div class="mb-6 pb-4 border-b border-gray-200">
+        <h2 class="text-2xl font-bold text-gray-800" th:text="'Result for: ' + ${quiz.title}">Quiz Result: Quiz Title</h2>
+        <p class="text-sm text-gray-600 mt-1">Class: <span th:text="${quiz.schoolClass?.name}">Class Name</span></p>
+        <p class="text-sm text-gray-500 mt-1">Attempt Submitted: <span th:text="${attemptResult.endTime != null ? #temporals.format(attemptResult.endTime, 'MMM dd, HH:mm') : 'N/A'}">Timestamp</span></p>
+    </div>
+
+    <div class="bg-white p-6 mb-6 rounded-lg shadow-sm border border-gray-200 text-center">
+        <h3 class="text-xl font-semibold text-gray-700 mb-3">Your Score</h3>
+        <div th:if="${attemptResult.status.name() == 'GRADED'}">
+            <span class="text-2xl font-bold px-4 py-1.5 rounded-lg inline-block shadow-sm"
+                  th:text="${#numbers.formatDecimal(attemptResult.score, 1, 1)} + ' / ' + ${attemptResult.maxScore}"
+                  th:with="percentage=${attemptResult.maxScore > 0 ? (attemptResult.score / attemptResult.maxScore * 100) : 0}"
+                  th:classappend="${percentage >= 60 ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-red-100 text-red-800 border border-red-300'}">
+                  8.0 / 10
+            </span>
+            <p class="text-sm text-gray-600 mt-2" th:text="${#numbers.formatDecimal(percentage, 1, 1)} + '%'"></p>
+        </div>
+        <div th:if="${attemptResult.status.name() == 'SUBMITTED'}">
+             <span class="text-2xl font-bold px-4 py-1.5 rounded-lg inline-block shadow-sm bg-blue-100 text-blue-800 border border-blue-300">
+                  Pending Manual Grade
+            </span>
+             <p class="text-sm text-gray-500 mt-2">Your answers require teacher grading.</p>
+        </div>
+         <div th:if="${attemptResult.status.name() == 'IN_PROGRESS'}">
+             <span class="text-2xl font-bold px-4 py-1.5 rounded-lg inline-block shadow-sm bg-blue-100 text-blue-800 border border-blue-300"> In Progress </span>
+             <p class="text-sm text-gray-500 mt-2">Quiz has not been submitted yet.</p>
+        </div>
+    </div>
+
+    <h3 class="text-xl font-semibold text-gray-700 mb-4">Answer Breakdown</h3>
+    <div th:if="${attemptResult.answerResults != null and !attemptResult.answerResults.isEmpty()}">
+        <div th:each="answerRes, stat : ${attemptResult.answerResults}"
+             class="bg-white p-5 mb-5 rounded-lg border border-gray-200 shadow-sm">
+
+            <div class="flex justify-between items-baseline mb-3">
+                <p class="text-base font-medium text-gray-800 mb-3">
+                    <strong th:text="${stat.index + 1} + '. '">1. </strong>
+                    <span th:text="${answerRes.questionText}">Question text...</span>
+                </p>
+                <span class="text-xs text-gray-500 font-normal" th:text="'(' + ${answerRes.questionPoints} + ' points)'">(1 points)</span>
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-gray-100 space-y-2 text-sm">
+                <div class="flex items-start">
+                    <span class="font-semibold text-gray-600 w-28 inline-block flex-shrink-0 align-top">Your Answer:</span>
+                    <pre class="p-2 rounded-md inline-block w-full bg-gray-50 border border-gray-200 whitespace-pre-wrap flex-grow"
+                         th:text="${answerRes.studentAnswerText != null ? answerRes.studentAnswerText : '(Not Answered)'}">
+                         Student's submitted answer text.
+                    </pre>
+                </div>
+                 <div th:if="${answerRes.pointsAwarded == null}" class="flex items-start">
+                     <span class="font-semibold text-gray-600 w-28 inline-block flex-shrink-0 align-top">Status:</span>
+                     <span class="text-blue-600 italic">Awaiting manual grade</span>
+                </div>
+            </div>
+
+            <div class="text-xs font-semibold mt-2 text-right"
+                 th:classappend="${answerRes.pointsAwarded == null ? 'text-blue-600' : (answerRes.isCorrect() ? 'text-green-600' : 'text-red-600')}">
+                 <span th:if="${answerRes.pointsAwarded != null}" th:text="${#numbers.formatDecimal(answerRes.pointsAwarded, 1, 1)} + ' / ' + ${answerRes.questionPoints} + ' points'">1 / 1 points</span>
+                 <span th:if="${answerRes.pointsAwarded == null}" th:text="'Pending / ' + ${answerRes.questionPoints} + ' points'">Pending / 1 points</span>
+            </div>
+        </div> </div>
+    <div th:unless="${attemptResult.answerResults != null and !attemptResult.answerResults.isEmpty()}" class="text-center text-gray-500 italic py-4">
+        No answer details available for this attempt.
+    </div>
+
+    <div class="mt-8 text-center space-x-4">
+         <a th:href="@{/student/quizzes/class/{classId}(classId=${quiz.schoolClass.id})}" class="text-sm text-purple-600 hover:underline">&larr; Back to Quizzes for <span th:text="${quiz.schoolClass.name}">Class</span></a>
+         <a th:href="@{/dashboard}" class="text-sm text-purple-600 hover:underline">Back to Dashboard</a>
+    </div>
+
+</main> </body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::title}, ~{::main})}">
+
+<head>
+    <title>My Friends</title>
+    <style>
+        .action-icon { display: inline-flex; align-items: center; padding: 0.3rem 0.5rem; border-radius: 0.25rem; transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out; text-decoration: none; border: none; background-color: transparent; cursor: pointer; }
+        .action-icon:hover { background-color: #f3f4f6; text-decoration: none; }
+        .action-icon i { width: 1rem; height: 1rem; margin-right: 0.25rem; flex-shrink: 0; }
+        .action-icon span { font-size: 0.75rem; font-weight: 500; }
+        .request-action-btn { padding: 0.25rem 0.5rem !important; font-size: 0.75rem !important; }
+        .request-action-btn i { margin-right: 0 !important; }
+        /* Style for profile links */
+        .profile-link { @apply flex items-center hover:no-underline; }
+        .profile-link:hover .profile-name-text { @apply text-purple-700 underline; } /* Style name on hover */
+    </style>
+</head>
+
+<body>
+
+    <main th:fragment="main">
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-2 sm:mb-0">My Friends & Requests</h2>
+            <a th:href="@{/friends/search}" class="btn btn-primary btn-sm"><i class="fas fa-search mr-1"></i> Find Friends</a>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+        <div th:if="${pendingRequests != null and !pendingRequests.isEmpty()}" class="mb-8">
+            <h3 class="text-xl font-semibold text-gray-700 mb-4">Pending Friend Requests</h3>
+            <div class="content-card p-4 space-y-3">
+                <div th:each="req : ${pendingRequests}" class="flex items-center justify-between p-2 border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
+                    <a th:href="@{/profile/{username}(username=${req.sender.username})}" class="profile-link flex-grow mr-3">
+                         <div class="w-10 h-10 mr-3 flex-shrink-0">
+                             <img th:if="${req.sender.profilePicturePath != null}" th:src="@{/download/profile/{filename}(filename=${req.sender.profilePicturePath})}" alt="Pic" class="w-full h-full rounded-full object-cover border border-gray-300" onerror="this.onerror=null; this.src='https://placehold.co/40x40/e2e8f0/adb5bd?text=N/A';">
+                             <span th:unless="${req.sender.profilePicturePath != null}" class="inline-flex items-center justify-center w-full h-full overflow-hidden bg-gray-200 rounded-full text-gray-500 border border-gray-300"><i class="fas fa-user text-lg"></i></span>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-800 text-sm profile-name-text" th:text="${req.sender.firstName + ' ' + req.sender.lastName}">Sender Name</p>
+                            <p class="text-xs text-gray-500" th:text="${req.sender.username}">sender@example.com</p>
+                            <span th:each="role : ${req.sender.roles}" th:text="${role.name.replace('ROLE_', '')}" class="badge badge-indigo text-xs mt-1">Role</span>
+                        </div>
+                    </a>
+                    <div class="flex space-x-2 flex-shrink-0">
+                        <form th:action="@{/friends/request/accept/{requestId}(requestId=${req.id})}" method="post" class="m-0"><button type="submit" class="btn btn-success btn-sm request-action-btn" title="Accept Request"><i class="fas fa-check"></i></button></form>
+                        <form th:action="@{/friends/request/reject/{requestId}(requestId=${req.id})}" method="post" class="m-0"><button type="submit" class="btn btn-danger btn-sm request-action-btn" title="Reject Request"><i class="fas fa-times"></i></button></form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="text-xl font-semibold text-gray-700 mb-4" th:classappend="${pendingRequests == null or pendingRequests.isEmpty()} ? 'mt-0' : 'mt-6'"> My Friends (<span th:text="${friends != null ? friends.size() : 0}">0</span>)</h3>
+        <div class="content-card p-6">
+            <div th:if="${friends == null or friends.isEmpty()}" class="text-center text-gray-500 py-6 italic">You haven't added any friends yet.</div>
+            <div th:unless="${friends == null or friends.isEmpty()}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div th:each="friend : ${friends}" class="border border-gray-200 rounded-lg p-4 flex flex-col items-center text-center shadow-sm bg-white">
+                    <a th:href="@{/profile/{username}(username=${friend.username})}" class="flex flex-col items-center hover:no-underline mb-2">
+                        <div class="w-20 h-20 mb-3">
+                             <img th:if="${friend.profilePicturePath != null}" th:src="@{/download/profile/{filename}(filename=${friend.profilePicturePath})}" alt="Profile Picture" class="w-full h-full rounded-full object-cover border-2 border-gray-300" onerror="this.onerror=null; this.src='https://placehold.co/80x80/e2e8f0/adb5bd?text=N/A';">
+                             <span th:unless="${friend.profilePicturePath != null}" class="inline-flex items-center justify-center w-full h-full overflow-hidden bg-gray-200 rounded-full text-gray-500 border-2 border-gray-300"><i class="fas fa-user text-3xl"></i></span>
+                        </div>
+                        <p class="font-semibold text-gray-800 profile-name-text" th:text="${friend.firstName + ' ' + friend.lastName}">Friend Name</p>
+                        <p class="text-xs text-gray-500" th:text="${friend.username}">friend@example.com</p>
+                        <span th:each="role : ${friend.roles}" th:text="${role.name.replace('ROLE_', '')}" class="badge badge-indigo text-xs my-1">Role</span>
+                    </a>
+                    <div class="flex space-x-2 mt-auto pt-2"> <a th:href="@{/chat/private/{username}(username=${friend.username})}" class="btn btn-secondary btn-sm text-xs" title="Private Chat"><i class="fas fa-comment-dots mr-1"></i> Chat</a>
+                         <form th:action="@{/friends/remove/{friendUsername}(friendUsername=${friend.username})}" method="post" th:data-friend-name="${friend.firstName + ' ' + friend.lastName}" onsubmit="return confirm('Remove ' + this.getAttribute('data-friend-name') + '?');">
+                            <button type="submit" class="action-icon text-red-500 hover:text-red-700" title="Remove Friend"><i class="fas fa-user-minus"></i><span class="text-xs font-medium">Remove</span></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mt-8 text-center"><a th:href="@{/dashboard}" class="text-sm text-purple-600 hover:underline">&larr; Back to Dashboard</a></div>
+    </main>
+
+</body>
+</html>

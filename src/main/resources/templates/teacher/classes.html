@@ -1,0 +1,125 @@
+
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::title}, ~{::main})}">
+
+<head>
+    <title>My Classes</title>
+    <style>
+        /* Use existing styles from layout.html */
+        .delete-form-inline { @apply inline m-0 p-0; }
+        .action-icon {
+            display: inline-flex; align-items: center; padding: 0.3rem 0.5rem;
+            border-radius: 0.25rem; transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+            text-decoration: none; border: none; background-color: transparent; cursor: pointer;
+        }
+        .action-icon:hover { background-color: #f3f4f6; text-decoration: none; }
+        .action-icon i { width: 1rem; height: 1rem; margin-right: 0.25rem; flex-shrink: 0; }
+        .action-icon span { font-size: 0.75rem; font-weight: 500; }
+    </style>
+</head>
+
+<body>
+
+    <main th:fragment="main">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-semibold text-gray-700">My Classes</h2>
+            <a th:href="@{/teacher/classes/new}" class="btn btn-primary btn-sm">
+                 <i class="fas fa-plus mr-1"></i> Create New Class
+            </a>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+        <div class="table-container bg-white">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Class Name</th>
+                        <th>Description</th>
+                        <th>Class Code</th>
+                        <th>Students</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-700">
+                    <tr th:each="class : ${classes}" th:if="${classes != null and !classes.isEmpty()}" class="hover:bg-gray-50">
+                        <td class="font-medium align-middle">
+                            <div class="flex items-center space-x-2">
+                                <div class="flex-shrink-0">
+                                    <div th:if="${class.classImagePath != null}">
+                                        <img th:src="@{/download/class-image/{filename}(filename=${class.classImagePath})}"
+                                             alt="Class Image"
+                                             class="w-8 h-8 object-cover rounded-full border border-gray-200"
+                                             th:alt="${class.name + ' image'}"
+                                             onerror="this.onerror=null; this.parentElement.innerHTML = '<div class=\'w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-400 rounded-full border border-gray-200 text-sm\'>?</div>';">
+                                    </div>
+                                    <div th:unless="${class.classImagePath != null}"
+                                         class="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-400 rounded-full border border-gray-200 text-sm">
+                                        <i class="fas fa-image text-sm"></i>
+                                    </div>
+                                </div>
+                                <a th:href="@{/teacher/classes/details/{id}(id=${class.id})}"
+                                   class="text-purple-600 hover:text-purple-800 hover:underline whitespace-nowrap"
+                                   th:text="${class.name}">Class Name</a>
+                            </div>
+                        </td>
+                        <td class="text-sm align-middle" th:text="${class.description}">Description</td>
+                        <td class="text-sm font-mono text-purple-700 align-middle" th:text="${class.classCode}">CODE</td>
+                        <td class="text-sm align-middle" th:text="${#lists.size(class.students)}">0</td>
+                        <td class="text-sm whitespace-nowrap align-middle">
+                            <div class="flex items-center space-x-2">
+                                <a th:href="@{/teacher/classes/details/{id}(id=${class.id})}"
+                                   class="action-icon text-green-600 hover:text-green-800"
+                                   title="Open Class Chat" aria-label="Open Class Chat">
+                                   <i class="fas fa-comments"></i>
+                                </a>
+                                <a th:href="@{/teacher/assignments/class/{id}(id=${class.id})}"
+                                   class="action-icon text-blue-600 hover:text-blue-800"
+                                   title="View Assignments" aria-label="View Assignments">
+                                   <i class="fas fa-list-alt"></i>
+                                </a>
+                                <a th:href="@{/teacher/classes/{classId}/quizzes(classId=${class.id})}"
+                                   class="action-icon text-indigo-600 hover:text-indigo-800" title="Manage Quizzes" aria-label="Manage Quizzes">
+                                   <i class="fas fa-question-circle"></i>
+                                </a>
+                                <a th:href="@{/teacher/classes/{classId}/gradebook(classId=${class.id})}"
+                                   class="action-icon text-purple-600 hover:text-purple-800"
+                                   title="View Gradebook" aria-label="View Gradebook">
+                                   <i class="fas fa-book"></i>
+                                </a>
+                                <a th:href="@{/teacher/classes/edit/{id}(id=${class.id})}"
+                                   class="action-icon text-yellow-600 hover:text-yellow-800"
+                                   title="Edit Class" aria-label="Edit Class">
+                                   <i class="fas fa-edit"></i>
+                                </a>
+                                <form th:action="@{/teacher/classes/delete/{id}(id=${class.id})}"
+                                      method="post"
+                                      class="delete-form-inline"
+                                      th:data-classname="${class.name}"
+                                      onsubmit="return confirm('Delete class \'' + this.getAttribute('data-classname') + '\'? This also deletes assignments/submissions/quizzes!');"> <button type="submit"
+                                            class="action-icon text-red-500 hover:text-red-700"
+                                            title="Delete Class" aria-label="Delete Class">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr th:if="${classes == null or classes.isEmpty()}">
+                        <td colspan="5" class="px-4 py-4 text-center text-gray-500 italic">
+                            You have not created any classes yet. Use the "Create New Class" button.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-8 text-center">
+             <a th:href="@{/dashboard}" class="text-sm text-purple-600 hover:underline">&larr; Back to Dashboard</a>
+        </div>
+    </main>
+
+</body>
+</html>

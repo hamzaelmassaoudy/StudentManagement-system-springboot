@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::title}, ~{::main})}">
+
+<head>
+    <title>Find Friends</title>
+    <style>
+        .action-icon { display: inline-flex; align-items: center; padding: 0.3rem 0.5rem; border-radius: 0.25rem; transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out; text-decoration: none; border: none; background-color: transparent; cursor: pointer; }
+        .action-icon:hover:not([disabled]) { background-color: #f3f4f6; text-decoration: none; }
+        .action-icon i { width: 1rem; height: 1rem; margin-right: 0.25rem; flex-shrink: 0; }
+        .action-icon span { font-size: 0.75rem; font-weight: 500; }
+        .action-icon[disabled] { cursor: not-allowed; opacity: 0.6; }
+        .action-icon.sent { color: #a855f7; }
+        .action-icon.received { color: #2563eb; }
+        /* Style for profile links */
+        .profile-link { @apply flex flex-col items-center hover:no-underline mb-2; }
+        .profile-link:hover .profile-name-text { @apply text-purple-700 underline; } /* Style name on hover */
+    </style>
+</head>
+
+<body>
+
+    <main th:fragment="main">
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-2 sm:mb-0">Find Friends</h2>
+             <a th:href="@{/friends}" class="text-sm text-purple-600 hover:underline"><i class="fas fa-users mr-1"></i> View My Friends</a>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+        <div class="content-card p-6 mb-6">
+             <form th:action="@{/friends/search}" method="get" class="flex items-end space-x-3">
+                 <div class="flex-grow"><label for="searchTerm" class="block text-sm font-medium text-gray-700 mb-1">Search Users</label><input type="text" id="searchTerm" name="searchTerm" th:value="${searchTerm}" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500" placeholder="Enter name or email..."></div>
+                 <div><button type="submit" class="btn btn-primary"><i class="fas fa-search mr-1"></i> Search</button></div>
+             </form>
+         </div>
+
+        <div class="content-card p-6">
+             <h3 class="text-lg font-semibold text-gray-800 mb-4">Search Results</h3>
+             <div th:if="${searchTerm == null or searchTerm.trim().isEmpty()}" class="text-center text-gray-500 py-6 italic">Enter a name or email above to search for users.</div>
+             <div th:if="${searchTerm != null and !searchTerm.trim().isEmpty() and searchResults.isEmpty()}" class="text-center text-gray-500 py-6 italic">No users found matching your search term.</div>
+
+             <div th:if="${searchResults != null and !searchResults.isEmpty()}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                 <div th:each="user : ${searchResults}" class="border border-gray-200 rounded-lg p-4 flex flex-col items-center text-center shadow-sm bg-white">
+                     <a th:href="@{/profile/{username}(username=${user.username})}" class="profile-link">
+                         <div class="w-20 h-20 mb-3">
+                             <img th:if="${user.profilePicturePath != null}" th:src="@{/download/profile/{filename}(filename=${user.profilePicturePath})}" alt="Profile Picture" class="w-full h-full rounded-full object-cover border-2 border-gray-300" onerror="this.onerror=null; this.src='https://placehold.co/80x80/e2e8f0/adb5bd?text=N/A';">
+                             <span th:unless="${user.profilePicturePath != null}" class="inline-flex items-center justify-center w-full h-full overflow-hidden bg-gray-200 rounded-full text-gray-500 border-2 border-gray-300"><i class="fas fa-user text-3xl"></i></span>
+                        </div>
+                        <p class="font-semibold text-gray-800 profile-name-text" th:text="${user.firstName + ' ' + user.lastName}">User Name</p>
+                        <p class="text-xs text-gray-500" th:text="${user.username}">user@example.com</p>
+                        <span th:each="role : ${user.roles}" th:text="${role.name.replace('ROLE_', '')}" class="badge badge-indigo text-xs my-1">Role</span>
+                    </a>
+                    <div class="mt-auto pt-2" th:switch="${pendingRequestStatus.get(user.id)}">
+                        <div th:case="'SENT'"><button class="action-icon sent" disabled title="Friend request already sent"><i class="fas fa-paper-plane"></i><span class="text-xs font-medium">Request Sent</span></button></div>
+                        <div th:case="'RECEIVED'"><button class="action-icon received" disabled title="This user sent you a request"><i class="fas fa-inbox"></i><span class="text-xs font-medium">Request Received</span></button></div>
+                        <div th:case="*"><form th:action="@{/friends/request/send/{receiverUsername}(receiverUsername=${user.username})}" method="post"><button type="submit" class="action-icon text-green-600 hover:text-green-800" title="Send Friend Request"><i class="fas fa-user-plus"></i><span class="text-xs font-medium">Send Request</span></button></form></div>
+                    </div>
+                 </div>
+             </div>
+        </div>
+        <div class="mt-8 text-center"><a th:href="@{/dashboard}" class="text-sm text-purple-600 hover:underline">&larr; Back to Dashboard</a></div>
+    </main>
+
+</body>
+</html>

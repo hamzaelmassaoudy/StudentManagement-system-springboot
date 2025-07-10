@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::title}, ~{::main})}">
+
+<head>
+    <title th:text="'Quizzes for ' + ${schoolClass.name}">Class Quizzes</title>
+    <style>
+        /* Use existing action-icon styles from layout.html */
+        .delete-form { display: inline; } /* Keep delete form inline */
+    </style>
+</head>
+
+<body>
+
+    <main th:fragment="main">
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 pb-3 border-b border-gray-200">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-2 sm:mb-0" th:text="'Quizzes for ' + ${schoolClass.name}">Class Quizzes</h2>
+            <div class="flex items-center space-x-3">
+                 <a th:href="@{/teacher/classes}" class="text-sm text-purple-600 hover:underline">
+                     &larr; Back to My Classes
+                 </a>
+                 <a th:href="@{/teacher/quizzes/new/{classId}(classId=${schoolClass.id})}"
+                   class="btn btn-success btn-sm"> <i class="fas fa-plus mr-1"></i> Create New Quiz
+                 </a>
+            </div>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+        <div class="table-container bg-white">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Description</th>
+                        <th>Due Date</th>
+                        <th>Time Limit</th>
+                        <th>Questions</th>
+                        <th>Attempts</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-700">
+                    <tr th:each="quiz : ${quizzes}" th:if="${!quizzes.isEmpty()}" class="hover:bg-gray-50 transition-colors duration-150">
+                        <td class="text-sm" th:text="${quiz.id}">1</td>
+                        <td class="font-medium text-sm">
+                            <a th:href="@{/teacher/quizzes/{quizId}/view(quizId=${quiz.id})}"
+                                class="text-purple-600 hover:text-purple-800 hover:underline"
+                                th:text="${quiz.title}">Quiz Title</a>
+                        </td>
+                        <td class="text-sm" th:text="${#strings.abbreviate(quiz.description, 50)}">Description...</td>
+                        <td class="text-sm whitespace-nowrap" th:text="${quiz.dueDate != null ? #temporals.format(quiz.dueDate, 'yyyy-MM-dd HH:mm') : 'N/A'}">Due Date</td>
+                        <td class="text-sm whitespace-nowrap" th:text="${quiz.timeLimitMinutes != null ? quiz.timeLimitMinutes + ' min' : 'None'}">Limit</td>
+                        <td class="text-sm" th:text="${quiz.questions != null ? #lists.size(quiz.questions) : 0}">5</td>
+                        <td class="text-sm">
+                            <a href="#" th:href="@{/teacher/quizzes/{quizId}/attempts(quizId=${quiz.id})}" class="text-blue-600 hover:text-blue-800 hover:underline font-medium">
+                                View (<span th:text="${quiz.attempts != null ? #lists.size(quiz.attempts) : 0}">0</span>)
+                            </a>
+                        </td>
+                        <td class="text-sm whitespace-nowrap">
+                             <div class="flex items-center space-x-1">
+                                <a th:href="@{/teacher/quizzes/{quizId}/view(quizId=${quiz.id})}"
+                                   class="action-icon text-blue-600 hover:text-blue-800"
+                                   title="View Quiz Details" aria-label="View Quiz Details">
+                                   <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="#" th:href="@{/teacher/quizzes/{quizId}/edit(quizId=${quiz.id})}"
+                                   class="action-icon text-yellow-600 hover:text-yellow-800"
+                                   title="Edit Quiz" aria-label="Edit Quiz">
+                                   <i class="fas fa-edit"></i>
+                                </a>
+                                <form th:action="@{/teacher/quizzes/delete/{quizId}(quizId=${quiz.id})}"
+                                      method="post"
+                                      class="delete-form m-0 p-0 inline"
+                                      th:data-quiz-title="${quiz.title}"
+                                      onsubmit="return confirm('Are you sure you want to delete the quiz \'' + this.getAttribute('data-quiz-title') + '\'? This will also delete all questions, options, and student attempts!');">
+                                    <button type="submit"
+                                            class="action-icon text-red-500 hover:text-red-700"
+                                            title="Delete Quiz" aria-label="Delete Quiz">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr th:if="${quizzes.isEmpty()}">
+                        <td colspan="8" class="px-4 py-6 text-center text-gray-500 italic">
+                            No quizzes found for this class yet. Use the "Create New Quiz" button.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+         <div class="mt-8 text-center">
+             <a th:href="@{/dashboard}" class="text-sm text-purple-600 hover:underline">&larr; Back to Dashboard</a>
+        </div>
+    </main>
+
+</body>
+</html>

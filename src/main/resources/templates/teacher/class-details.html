@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::title}, ~{::main})}">
+<head>
+    <title th:text="'Chat - ' + ${schoolClass.name}">Class Chat</title>
+    <style>
+        /* Styles for chat header image (now fully rounded) */
+        /* This CSS block is less critical now as classes are applied directly, but kept for reference */
+        .chat-header-image {
+            width: 2.5rem; /* w-10 */
+            height: 2.5rem; /* h-10 */
+            border-radius: 9999px; /* rounded-full */
+            object-fit: cover;
+            border: 1px solid #e5e7eb; /* border-gray-200 */
+            background-color: #f3f4f6; /* bg-gray-100 */
+            flex-shrink: 0; /* Prevent shrinking */
+        }
+        .chat-header-image-placeholder {
+             width: 2.5rem; /* w-10 */
+             height: 2.5rem; /* h-10 */
+             border-radius: 9999px; /* rounded-full */
+             display: flex; align-items: center; justify-content: center;
+             background-color: #e5e7eb; color: #9ca3af;
+             border: 1px solid #d1d5db; flex-shrink: 0;
+        }
+        .chat-header-image-placeholder i { font-size: 1.125rem; } /* text-lg */
+
+        /* Define height for the overall chat area */
+        #chat-window {
+            height: 65vh; /* Example: 65% of viewport height */
+            max-height: 700px; /* Optional: Max height */
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body>
+
+    <main th:fragment="main">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-5 pb-4 border-b border-gray-200 gap-4">
+            <div class="flex items-center space-x-3"> <div class="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden border border-gray-200 bg-gray-100 flex items-center justify-center">
+                    <img th:if="${schoolClass.classImagePath != null}"
+                         th:src="@{/download/class-image/{filename}(filename=${schoolClass.classImagePath})}"
+                         alt="Class Image"
+                         class="w-full h-full object-cover" th:alt="${schoolClass.name + ' image'}"
+                         onerror="this.onerror=null; this.parentElement.innerHTML = '<i class=\'fas fa-school text-lg text-gray-400\'></i>';"> <i th:unless="${schoolClass.classImagePath != null}" class="fas fa-school text-lg text-gray-400"></i> </div>
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-800" th:text="${schoolClass.name}">Class Name</h2>
+                    <div class="text-xs mt-1 flex items-center flex-wrap gap-x-3 gap-y-1 text-gray-500">
+                        <span class="inline-flex items-center">
+                            <i class="fas fa-barcode mr-1 text-gray-400"></i>
+                            Code: <span class="font-mono text-purple-700 ml-1" th:text="${schoolClass.classCode}">CODE</span>
+                        </span>
+                        <span class="inline-flex items-center">
+                            <i class="fas fa-chalkboard-teacher mr-1 text-gray-400"></i>
+                            Teacher:
+                            <a th:if="${schoolClass.teacher != null}"
+                               th:href="@{/profile/{username}(username=${schoolClass.teacher.username})}"
+                               class="ml-1 text-purple-600 hover:underline"
+                               th:text="${schoolClass.teacher.firstName + ' ' + schoolClass.teacher.lastName}">
+                                Teacher Name
+                            </a>
+                            <span th:unless="${schoolClass.teacher != null}" class="ml-1 italic">N/A</span>
+                        </span>
+                        <span class="inline-flex items-center">
+                            <i class="fas fa-users mr-1 text-gray-400"></i>
+                            Members:
+                            <span class="ml-1" th:text="${schoolClass.students != null ? #lists.size(schoolClass.students) : 0}">0</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-shrink-0 mt-2 sm:mt-0">
+                 <a sec:authorize="hasRole('TEACHER')" th:href="@{/teacher/classes}" class="text-sm font-medium text-purple-600 hover:text-purple-800 hover:underline whitespace-nowrap">&larr; My Classes</a>
+                 <a sec:authorize="hasRole('STUDENT')" th:href="@{/student/classes}" class="text-sm font-medium text-purple-600 hover:text-purple-800 hover:underline whitespace-nowrap">&larr; My Classes</a>
+            </div>
+        </div>
+        <div id="chat-window" class="content-card overflow-hidden p-0 sm:p-0">
+            <div id="chat-box" class="flex-grow overflow-y-auto p-4">
+                 <div id="chat-status" class="system-message">Connecting to chat...</div>
+                 <div id="message-list">
+                     </div>
+            </div>
+            <div id="chat-input" class="flex-shrink-0 flex space-x-2 p-4 border-t border-gray-200 bg-gray-50">
+                <input type="text" id="message" placeholder="Connecting..." autocomplete="off" disabled
+                       class="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"/>
+                <button id="sendButton" class="btn btn-primary" disabled>
+                    <i class="fas fa-paper-plane mr-1"></i> Send
+                </button>
+            </div>
+        </div>
+        <div class="mt-8 text-center">
+             <a th:href="@{/dashboard}" class="text-sm text-purple-600 hover:underline">&larr; Back to Dashboard</a>
+        </div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+        <script th:inline="javascript">
+        /*<![CDATA[*/
+
+        // --- Constants ---
+        const classId = /*[[${schoolClass.id}]]*/ 'defaultClassId';
+        const currentUsername = /*[[${#authentication.name}]]*/ 'defaultUser';
+        const profilePicBaseUrl = '/download/profile/';
+        const defaultProfileIcon = '<i class="fas fa-user"></i>'; // Default icon HTML
+
+        // --- DOM Elements ---
+        const messageInput = document.getElementById('message');
+        const sendButton = document.getElementById('sendButton');
+        const chatBox = document.getElementById('chat-box'); // The scrollable container
+        const chatStatus = document.getElementById('chat-status');
+        const messageList = document.getElementById('message-list'); // Where messages are appended
+
+        // --- State ---
+        let stompClient = null;
+        let isConnected = false;
+        let subscription = null;
+
+        // --- Functions ---
+
+        function disableChatInput(message = "Connecting...") {
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+            messageInput.placeholder = message;
+         }
+        function enableChatInput() {
+            messageInput.disabled = false;
+            sendButton.disabled = false;
+            messageInput.placeholder = "Type your message...";
+            messageInput.focus();
+        }
+        function updateChatStatus(text, isError = false) {
+             if (chatStatus) {
+                chatStatus.textContent = text;
+                chatStatus.className = 'system-message'; // Reset classes
+                if (isError) chatStatus.classList.add('error');
+                if (!text || text === "Chat ready.") {
+                     chatStatus.style.display = 'none';
+                } else {
+                     chatStatus.style.display = 'block';
+                }
+            }
+        }
+        function connect() {
+            console.log("Attempting WebSocket connection...");
+            disableChatInput("Connecting...");
+            updateChatStatus("Connecting to chat...");
+
+            if (typeof SockJS === 'undefined' || typeof Stomp === 'undefined') {
+                console.error("SockJS or StompJS library not loaded!");
+                updateChatStatus("Chat library error. Please refresh.", true);
+                disableChatInput("Library Error"); return;
+            }
+
+            try {
+                const socket = new SockJS('/ws');
+                stompClient = Stomp.over(socket);
+                stompClient.debug = null; // Disable console logging from Stomp
+
+                stompClient.connect({}, onConnected, onError);
+
+                // Handle WebSocket closure
+                stompClient.ws.onclose = function(event) {
+                     console.warn("WebSocket connection closed.", event);
+                     isConnected = false;
+                     disableChatInput("Connection lost");
+                     updateChatStatus("Connection lost. Please refresh.", true);
+                 };
+             } catch (error) {
+                 console.error("Error initializing SockJS or STOMP client:", error);
+                 updateChatStatus(`Initialization Error: ${error.message}. Please refresh.`, true);
+                 disableChatInput("Initialization Error");
+             }
+        }
+        async function onConnected(frame) {
+             isConnected = true;
+            console.log('WebSocket Connected successfully!', frame);
+            updateChatStatus("Connected. Loading history...");
+
+            try {
+                // Subscribe to the class topic *before* loading history
+                const topic = `/topic/class/${classId}`;
+                console.log(`Subscribing to topic: ${topic}`);
+                subscription = stompClient.subscribe(topic, onMessageReceived, (subErrorFrame) => {
+                    const subErrorMessage = subErrorFrame?.headers?.message || "Unknown subscription error";
+                    console.error("Subscription error frame:", subErrorFrame);
+                    updateChatStatus(`Error subscribing: ${subErrorMessage}`, true);
+                    disableChatInput("Subscription Error");
+                });
+
+                if (!subscription?.id) console.warn("Subscription might have failed silently (no ID).");
+                else console.log("Subscription successful. ID:", subscription.id);
+
+                // Load history after subscribing
+                await loadChatHistory();
+
+                // Notify others that user joined (optional)
+                stompClient.send(`/app/chat.addUser/${classId}`, {}, JSON.stringify({ senderUsername: currentUsername, type: 'JOIN' }));
+
+                updateChatStatus("Chat ready."); // Clear status
+                setTimeout(enableChatInput, 100); // Enable input slightly after connection
+                console.log("Chat fully initialized.");
+
+            } catch (error) {
+                 console.error("Error during post-connection setup:", error);
+                 updateChatStatus(`Error setting up chat: ${error.message || 'Setup failed'}. Please refresh.`, true);
+                 disableChatInput("Setup Error");
+            }
+        }
+        function onError(error) {
+            isConnected = false;
+            console.error('WebSocket Connection Error:', error);
+            messageList.innerHTML = ''; // Clear chat area on error
+            const errorMessage = (typeof error === 'string' ? error : error?.headers?.message) || 'Connection failed';
+            updateChatStatus(`Could not connect: ${errorMessage}. Check console and refresh.`, true);
+            disableChatInput("Connection Failed");
+        }
+
+        // Fetches chat history via REST
+        async function loadChatHistory() {
+            console.log("Loading chat history...");
+            messageList.innerHTML = '<p class="system-message">Loading history...</p>'; // Loading indicator
+            try {
+                const response = await fetch(`/chat/history/${classId}`);
+                console.log("History fetch response status:", response.status);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error("History fetch failed:", response.status, errorText);
+                    throw new Error(`Failed to load history (${response.status})`);
+                }
+                const history = await response.json();
+                console.log("History data received:", history);
+
+                messageList.innerHTML = ''; // Clear loading indicator
+                if (history.length === 0) {
+                    const noMsgP = document.createElement('p');
+                    noMsgP.className = 'system-message';
+                    noMsgP.textContent = "No previous messages in this chat.";
+                    messageList.appendChild(noMsgP);
+                } else {
+                    history.forEach(displayMessage); // Display each historical message
+                }
+                scrollToBottom(true); // Scroll to bottom after loading
+                console.log("Chat history loaded and displayed.");
+
+            } catch (error) {
+                console.error('Error loading or processing chat history:', error);
+                messageList.innerHTML = `<p class="system-message error">Error loading history.</p>`;
+                throw error; // Propagate error
+            }
+        }
+
+        // Displays a single message DTO in the chat
+        function displayMessage(messageDto) {
+             const messageRow = document.createElement('div');
+             messageRow.classList.add('message-row');
+
+             // Handle special "join" messages (customize as needed)
+             const joinMessagePattern = messageDto.senderFirstName + " joined the chat!";
+             if (messageDto.content === joinMessagePattern) {
+                 if (messageDto.senderUsername === currentUsername) return; // Don't show own join message
+                 messageRow.classList.add('system-message');
+                 messageRow.textContent = messageDto.senderFirstName + " joined.";
+             } else {
+                 // Regular chat message
+                 const isMyMessage = messageDto.senderUsername === currentUsername;
+                 messageRow.classList.add(isMyMessage ? 'my-message-row' : 'other-message-row');
+
+                 // Avatar container (uses .message-avatar CSS from layout.html)
+                 const avatarElement = document.createElement('div');
+                 avatarElement.classList.add('message-avatar');
+                 if (messageDto.senderProfilePicPath) {
+                     const img = document.createElement('img');
+                     img.src = profilePicBaseUrl + messageDto.senderProfilePicPath;
+                     img.alt = (messageDto.senderFirstName || 'User') + "'s avatar";
+                     // Fallback to default icon if image fails to load
+                     img.onerror = function() { this.parentElement.innerHTML = defaultProfileIcon; };
+                     avatarElement.appendChild(img);
+                 } else {
+                     avatarElement.innerHTML = defaultProfileIcon; // Default icon if no path
+                 }
+
+                 // Message bubble container
+                 const messageBubble = document.createElement('div');
+                 messageBubble.classList.add('message-bubble');
+
+                 // Sender details (Name, Role, ID)
+                 const senderDetails = document.createElement('div');
+                 senderDetails.classList.add('message-sender-details');
+                 const senderName = document.createElement('span');
+                 senderName.classList.add('sender-name');
+                 // Construct display name
+                 const displayName = (messageDto.senderFirstName || messageDto.senderLastName)
+                                     ? `${messageDto.senderFirstName || ''} ${messageDto.senderLastName || ''}`.trim()
+                                     : messageDto.senderUsername; // Fallback to username
+                 senderName.textContent = isMyMessage ? "You" : displayName;
+                 senderDetails.appendChild(senderName);
+                 // Add role/ID info if available
+                 const senderInfo = document.createElement('span');
+                 senderInfo.classList.add('sender-info');
+                 if (messageDto.senderRole === 'Student' && messageDto.senderStudentId) {
+                     senderInfo.textContent = `(ID: ${messageDto.senderStudentId})`;
+                 } else if (messageDto.senderRole && messageDto.senderRole !== 'System') {
+                     senderInfo.textContent = `(${messageDto.senderRole})`;
+                 }
+                 if (senderInfo.textContent) {
+                     senderDetails.appendChild(senderInfo);
+                 }
+                 messageBubble.appendChild(senderDetails);
+
+                 // Message content
+                 const contentElement = document.createElement('span');
+                 contentElement.classList.add('message-content');
+                 // Basic HTML escaping for content
+                 contentElement.textContent = messageDto.content ? messageDto.content.replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
+                 messageBubble.appendChild(contentElement);
+
+                 // Append avatar and bubble in correct order based on sender
+                 if (isMyMessage) {
+                     messageRow.appendChild(messageBubble);
+                     messageRow.appendChild(avatarElement);
+                 } else {
+                     messageRow.appendChild(avatarElement);
+                     messageRow.appendChild(messageBubble);
+                 }
+             }
+             // Add the completed row to the message list
+             messageList.appendChild(messageRow);
+        }
+
+        // Scrolls the chat box to the bottom if user is near the bottom
+        function scrollToBottom(force = false) {
+            const threshold = 150; // Pixels from bottom
+            // Check scroll position *before* adding the new message might be more reliable
+            const isNearBottom = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < threshold;
+            if (force || isNearBottom) {
+                 // Scroll after a tiny delay to allow the new message to render
+                 setTimeout(() => { chatBox.scrollTop = chatBox.scrollHeight; }, 50); // Increased delay slightly
+            }
+        }
+
+        // Sends a message via WebSocket
+        function sendMessage() {
+             const messageContent = messageInput.value.trim();
+            if (messageContent && isConnected && stompClient && stompClient.connected) {
+                const chatMessageDto = {
+                    content: messageContent,
+                    classId: classId // Class ID is already known
+                    // Sender details will be added by the server
+                };
+                try {
+                    // Send to the server endpoint
+                    stompClient.send(`/app/chat.sendMessage/${classId}`, {}, JSON.stringify(chatMessageDto));
+                    messageInput.value = ''; // Clear input after sending
+                } catch (sendError) {
+                     console.error("Error sending message via STOMP:", sendError);
+                     updateChatStatus("Error sending message.", true);
+                }
+            } else {
+                 console.warn("Send message aborted. Conditions not met: connected=", isConnected, "stompClient=", !!stompClient);
+                 if (!chatStatus.classList.contains('error')) {
+                    updateChatStatus("Cannot send message: Not connected.", true);
+                 }
+            }
+             messageInput.focus(); // Keep focus on input
+        }
+
+        // Handles messages received from the WebSocket topic
+        function onMessageReceived(payload) {
+            try {
+                const messageDto = JSON.parse(payload.body); // Parse the received DTO
+                displayMessage(messageDto); // Display it
+                scrollToBottom(); // Scroll if needed
+            } catch (e) {
+                console.error("Error parsing received message:", e, payload.body);
+                updateChatStatus("Received an unreadable message.", true);
+            }
+        }
+
+        // --- Event Listeners ---
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) { // Send on Enter, allow Shift+Enter for newline
+                sendMessage();
+                e.preventDefault(); // Prevent default newline behavior
+            }
+        });
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+             console.log("DOM fully loaded. Initializing chat script...");
+             setTimeout(connect, 50); // Connect after a short delay
+        });
+
+        /*]]>*/
+        </script>
+        </main>
+
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::title}, ~{::main})}">
+
+<head>
+    <title>Request Makeup</title>
+    <style>
+        /* Custom styles for grade display */
+        .grade-display-small {
+            @apply font-semibold px-2 py-0.5 rounded-md text-sm; /* Smaller badge-like */
+        }
+        .grade-pass { @apply bg-green-100 text-green-700 border border-green-200; }
+        .grade-fail { @apply bg-red-100 text-red-700 border border-red-200; }
+        .grade-pending { @apply bg-blue-100 text-blue-700 border border-blue-200; }
+    </style>
+</head>
+
+<body>
+
+    <main th:fragment="main" class="px-4 py-6 md:px-6 md:py-8 lg:py-10">
+        <div class="mb-6 pb-3 border-b border-gray-200">
+            <h2 class="text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-redo-alt text-purple-600"></i>
+                Request Makeup Opportunity
+            </h2>
+        </div>
+
+        <div class="bg-white shadow-lg rounded-xl border border-gray-200 p-6 md:p-8 max-w-2xl mx-auto">
+
+            <section class="mb-6 pb-6 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <i class="fas fa-file-alt text-gray-500"></i>
+                    Submission Details
+                </h3>
+                <div class="space-y-2 text-sm text-gray-700">
+                    <p>
+                        <strong class="font-medium text-gray-900 w-24 inline-block">Assignment:</strong>
+                        <span th:text="${submission.assignment?.title}">Assignment Title</span>
+                    </p>
+                    <p>
+                        <strong class="font-medium text-gray-900 w-24 inline-block">Class:</strong>
+                        <span th:text="${submission.assignment?.schoolClass?.name}">Class Name</span>
+                    </p>
+                    <p>
+                        <strong class="font-medium text-gray-900 w-24 inline-block">Submitted On:</strong>
+                        <span th:text="${#temporals.format(submission.submissionDate, 'MMM dd, yyyy HH:mm')}">Submission Date</span>
+                    </p>
+                    <p class="flex items-center">
+                        <strong class="font-medium text-gray-900 w-24 inline-block">Grade:</strong>
+                        <span class="grade-display-small"
+                              th:text="${submission.grade ?: 'Not Graded'}"
+                              th:classappend="${submission.numericalGrade == null ? 'grade-pending' : (submission.numericalGrade >= 60 ? 'grade-pass' : 'grade-fail')}">
+                              Grade
+                        </span>
+                         <span th:if="${submission.numericalGrade != null}" class="ml-2 text-gray-500 text-xs" th:text="'(' + ${submission.numericalGrade} + '%)'"></span>
+                    </p>
+                </div>
+                <p th:if="${submission.numericalGrade == null or submission.numericalGrade >= 60}" class="mt-4 text-sm text-yellow-800 bg-yellow-50 p-3 rounded-md border border-yellow-200 flex items-center gap-2">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>This submission is not eligible for a makeup request (Grade must be below 60%).</span>
+                </p>
+            </section>
+
+            <div th:if="${errorMessage}" class="alert alert-danger mb-4" th:text="${errorMessage}"></div>
+
+            <form th:action="@{/student/makeup/request/{subId}(subId=${submission.id})}"
+                  method="post"
+                  class="space-y-5"
+                  th:if="${submission.numericalGrade != null and submission.numericalGrade < 60}">
+                 <h3 class="text-lg font-semibold text-gray-800 mb-1 flex items-center gap-2">
+                     <i class="fas fa-comment-dots text-gray-500"></i>
+                     Reason for Makeup Request
+                 </h3>
+                <div>
+                    <label for="reason" class="sr-only">Reason for Makeup Request</label> <textarea id="reason" name="reason" rows="5" required
+                              class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                              placeholder="Please provide a clear reason why you need a makeup opportunity for this assignment..."></textarea>
+                    <p class="text-xs text-gray-600 mt-2">Your teacher will review this request.</p>
+                </div>
+
+                <div class="flex items-center justify-end space-x-3 pt-4">
+                    <a th:href="@{/dashboard}" class="btn btn-secondary btn-sm">Cancel</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane mr-2"></i> Submit Request
+                    </button>
+                </div>
+            </form>
+
+             <div th:unless="${submission.numericalGrade != null and submission.numericalGrade < 60}" class="text-center mt-6">
+                 <a th:href="@{/dashboard}" class="btn btn-secondary">
+                     <i class="fas fa-arrow-left mr-2"></i> Back to Dashboard
+                 </a>
+             </div>
+
+        </div> <div class="mt-8 text-center">
+             <a th:href="@{/dashboard}" class="text-sm font-medium text-purple-600 hover:text-purple-800 hover:underline">&larr; Back to Dashboard</a>
+        </div>
+    </main>
+
+</body>
+</html>

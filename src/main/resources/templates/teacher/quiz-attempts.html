@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::title}, ~{::main})}">
+<head>
+    <title th:text="'Attempts for Quiz: ' + ${quiz.title}">Quiz Attempts</title>
+    </head>
+<body>
+    <main th:fragment="main">
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 pb-3 border-b border-gray-200">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-2 sm:mb-0" th:text="'Student Attempts for: ' + ${quiz.title}">Quiz Attempts</h2>
+            <a th:href="@{/teacher/classes/{classId}/quizzes(classId=${quiz.schoolClass.id})}" class="text-sm text-purple-600 hover:underline">
+                 &larr; Back to Quizzes
+             </a>
+        </div>
+        <p class="text-sm text-gray-600 mb-4">Class: <span th:text="${quiz.schoolClass.name}">Class Name</span></p>
+
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+        <div class="table-container bg-white">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student Name</th>
+                        <th>Student ID</th>
+                        <th>Status</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Score</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-700">
+                    <tr th:each="attempt : ${attempts}" th:if="${!attempts.isEmpty()}" class="hover:bg-gray-50 transition-colors duration-150">
+                        <td class="text-sm font-medium text-gray-900" th:text="${attempt.student.firstName + ' ' + attempt.student.lastName}">Student Name</td>
+                        <td class="text-sm" th:text="${attempt.student.studentId ?: 'N/A'}">Student ID</td>
+                        <td class="text-sm">
+                            <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
+                                  th:text="${#strings.capitalizeWords(#strings.toLowerCase(attempt.status.name().replace('_', ' ')))}"
+                                  th:classappend="${attempt.status.name() == 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' : (attempt.status.name() == 'SUBMITTED' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800')}">
+                                  Status
+                            </span>
+                        </td>
+                        <td class="text-sm whitespace-nowrap" th:text="${attempt.startTime != null ? #temporals.format(attempt.startTime, 'yyyy-MM-dd HH:mm') : '-'}">Start Time</td>
+                        <td class="text-sm whitespace-nowrap" th:text="${attempt.endTime != null ? #temporals.format(attempt.endTime, 'yyyy-MM-dd HH:mm') : '-'}">End Time</td>
+                        <td class="text-sm font-semibold">
+                            <span th:if="${attempt.score != null}" th:text="${#numbers.formatDecimal(attempt.score, 1, 1)} + '/' + ${attempt.maxScore}">8.5/10</span>
+                            <span th:if="${attempt.score == null and attempt.status.name() == 'SUBMITTED'}" class="text-xs italic text-gray-500">Pending</span>
+                            <span th:if="${attempt.score == null and attempt.status.name() == 'IN_PROGRESS'}" class="text-xs italic text-gray-400">-</span>
+                        </td>
+                        <td class="text-sm whitespace-nowrap">
+                            <a th:if="${attempt.status.name() == 'SUBMITTED'}"
+                               th:href="@{/teacher/attempts/{attemptId}/grade(attemptId=${attempt.id})}"
+                               class="action-icon text-blue-600 hover:text-blue-800" title="Grade Attempt" aria-label="Grade Attempt">
+                               <i class="fas fa-pen"></i> Grade
+                            </a>
+                            <a th:if="${attempt.status.name() == 'GRADED'}"
+                               th:href="@{/student/quizzes/result/{attemptId}(attemptId=${attempt.id})}" class="action-icon text-indigo-600 hover:text-indigo-800"
+                               title="View Graded Result" aria-label="View Graded Result">
+                               <i class="fas fa-poll-h"></i> Result
+                            </a>
+                            <span th:if="${attempt.status.name() == 'IN_PROGRESS'}" class="text-xs italic text-gray-400">In Progress</span>
+                        </td>
+                    </tr>
+                    <tr th:if="${attempts.isEmpty()}">
+                        <td colspan="7" class="px-4 py-6 text-center text-gray-500 italic">
+                            No student attempts found for this quiz yet.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+         <div class="mt-8 text-center">
+             <a th:href="@{/dashboard}" class="text-sm text-purple-600 hover:underline">&larr; Back to Dashboard</a>
+        </div>
+    </main> </body>
+</html>

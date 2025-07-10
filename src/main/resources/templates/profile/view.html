@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::title}, ~{::main})}">
+
+<head>
+    <title th:text="${profileUser.firstName + ' ' + profileUser.lastName + ' - Profile'}">User Profile</title>
+    </head>
+
+<body>
+
+    <main th:fragment="main" class="px-4 py-6 md:px-6 md:py-10 lg:py-12">
+        <div class="max-w-lg mx-auto bg-white rounded-xl shadow-lg border border-gray-200/80 p-6 md:p-8 text-center">
+
+            <div class="w-32 h-32 md:w-36 md:h-36 rounded-full mx-auto mb-5 shadow-lg overflow-hidden border-4 border-white bg-gray-200">
+                 <img th:if="${profileUser.profilePicturePath != null}"
+                      th:src="@{/download/profile/{filename}(filename=${profileUser.profilePicturePath})}"
+                      alt="Profile Picture"
+                      class="w-full h-full object-cover"
+                      onerror="this.onerror=null; this.parentElement.innerHTML = '<div class=\'flex items-center justify-center w-full h-full text-gray-400\'><i class=\'fas fa-user text-5xl md:text-6xl\'></i></div>';">
+                 <div th:unless="${profileUser.profilePicturePath != null}" class="flex items-center justify-center w-full h-full text-gray-400">
+                     <i class="fas fa-user text-5xl md:text-6xl"></i>
+                 </div>
+            </div>
+
+            <h2 class="text-2xl md:text-3xl font-semibold text-gray-800 mb-1"
+                th:text="${profileUser.firstName + ' ' + profileUser.lastName}">User Name</h2>
+
+            <div class="mb-3 space-x-2"> <span th:each="role : ${profileUser.roles}"
+                      th:text="${#strings.capitalize(#strings.toLowerCase(role.name.replace('ROLE_', '')))}"
+                      class="inline-block bg-indigo-100 text-indigo-800 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
+                      Role
+                </span>
+                <span th:if="${profileUser.studentId != null}" class="text-xs text-gray-500"
+                      th:text="'(ID: ' + ${profileUser.studentId} + ')'"> (ID: 12345)</span>
+            </div>
+
+            <div class="flex items-center justify-center text-sm text-gray-600 mb-4"> <i class="fas fa-envelope w-4 h-4 mr-1.5 text-gray-400"></i>
+                 <a th:href="'mailto:' + ${profileUser.username}" class="hover:underline text-gray-700 hover:text-purple-700" th:text="${profileUser.username}">user@example.com</a>
+             </div>
+
+             <div th:if="${commonClassesCount != null and commonClassesCount > 0}" class="inline-flex items-center text-xs text-gray-600 justify-center mb-6 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200"> <i class="fas fa-link w-3.5 h-3.5 mr-1.5 text-purple-500"></i> <span th:text="${commonClassesCount} + ' common class' + (${commonClassesCount} == 1 ? '' : 'es')">X common classes</span>
+             </div>
+             <div th:if="${commonClassesCount != null and commonClassesCount == 0 and relationshipStatus != 'SELF'}" class="inline-flex items-center text-xs text-gray-500 justify-center mb-6"> <i class="fas fa-unlink w-3.5 h-3.5 mr-1.5 text-gray-400"></i> <span>No common classes</span>
+             </div>
+
+
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 mt-6 pt-6 w-full border-t border-gray-200">
+
+                <div th:if="${relationshipStatus == 'SELF'}" class="w-full sm:w-auto flex-grow sm:flex-grow-0">
+                    <a th:href="@{/settings}" class="btn btn-secondary w-full sm:w-auto justify-center text-sm py-2 px-4 rounded-md shadow-sm hover:shadow-md transition-all duration-150">
+                        <i class="fas fa-edit mr-1.5"></i> Edit My Profile
+                    </a>
+                </div>
+
+                <div th:if="${relationshipStatus == 'FRIEND'}" class="flex flex-col sm:flex-row items-center gap-3 w-full">
+                    <a th:href="@{/chat/private/{username}(username=${profileUser.username})}" class="btn btn-primary w-full sm:w-auto justify-center text-sm py-2 px-4 rounded-md shadow-sm hover:shadow-md transition-all duration-150 flex-grow sm:flex-grow-0">
+                        <i class="fas fa-comments mr-1.5"></i> Send Message
+                    </a>
+                    <form th:action="@{/friends/remove/{friendUsername}(friendUsername=${profileUser.username})}"
+                          method="post"
+                          th:data-friend-name="${profileUser.firstName + ' ' + profileUser.lastName}"
+                          onsubmit="return confirm('Are you sure you want to remove ' + this.getAttribute('data-friend-name') + ' as a friend?');"
+                          class="w-full sm:w-auto flex-grow sm:flex-grow-0">
+                        <button type="submit" class="btn btn-danger w-full sm:w-auto justify-center text-sm py-2 px-4 rounded-md shadow-sm hover:shadow-md transition-all duration-150">
+                            <i class="fas fa-user-minus mr-1.5"></i> Remove Friend
+                        </button>
+                    </form>
+                </div>
+
+                <div th:if="${relationshipStatus == 'NONE'}" class="w-full sm:w-auto flex-grow sm:flex-grow-0">
+                     <form th:action="@{/friends/request/send/{receiverUsername}(receiverUsername=${profileUser.username})}" method="post" class="w-full sm:w-auto">
+                         <button type="submit" class="btn btn-success w-full sm:w-auto justify-center text-sm py-2 px-4 rounded-md shadow-sm hover:shadow-md transition-all duration-150">
+                             <i class="fas fa-user-plus mr-1.5"></i> Add Friend
+                         </button>
+                    </form>
+                </div>
+
+                <div th:if="${relationshipStatus == 'REQUEST_SENT'}" class="w-full sm:w-auto flex-grow sm:flex-grow-0">
+                    <button class="btn btn-secondary w-full sm:w-auto justify-center text-sm py-2 px-4 rounded-md shadow-sm hover:shadow-md transition-all duration-150" disabled>
+                        <i class="fas fa-paper-plane mr-1.5"></i> Request Sent
+                    </button>
+                </div>
+
+                <div th:if="${relationshipStatus == 'REQUEST_RECEIVED'}" class="flex flex-col sm:flex-row items-center gap-3 w-full">
+                     <form th:action="@{/friends/request/accept/{requestId}(requestId=${pendingRequestId})}" method="post" class="w-full sm:w-auto flex-grow sm:flex-grow-0">
+                         <button type="submit" class="btn btn-success w-full sm:w-auto justify-center text-sm py-2 px-4 rounded-md shadow-sm hover:shadow-md transition-all duration-150">
+                             <i class="fas fa-check mr-1.5"></i> Accept Request
+                         </button>
+                     </form>
+                     <form th:action="@{/friends/request/reject/{requestId}(requestId=${pendingRequestId})}" method="post" class="w-full sm:w-auto flex-grow sm:flex-grow-0">
+                          <button type="submit" class="btn btn-danger w-full sm:w-auto justify-center text-sm py-2 px-4 rounded-md shadow-sm hover:shadow-md transition-all duration-150">
+                             <i class="fas fa-times mr-1.5"></i> Reject Request
+                         </button>
+                     </form>
+                </div>
+
+            </div> </div> <div class="mt-8 text-center">
+             <a href="javascript:history.back()" class="text-sm font-medium text-purple-600 hover:text-purple-800 hover:underline">&larr; Go Back</a>
+        </div>
+
+    </main>
+
+</body>
+</html>

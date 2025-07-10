@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::title}, ~{::main})}">
+<head>
+    <title th:text="${filterClassName != null and filterClassName != 'All Classes'} ? 'Quizzes for ' + ${filterClassName} : 'My Quizzes'">My Quizzes</title>
+    </head>
+
+<body>
+
+<main th:fragment="main" class="px-4 py-6 md:px-6 md:py-8 lg:py-10">
+    <div class="flex flex-col sm:flex-row justify-between items-center mb-6 pb-3 border-b border-gray-200">
+         <h2 class="text-2xl font-semibold text-gray-800 mb-2 sm:mb-0"
+            th:text="${filterClassName != null and filterClassName != 'All Classes'} ? 'Quizzes for ' + ${filterClassName} : 'My Quizzes'">
+            My Quizzes
+        </h2>
+         <a th:if="${filterClassName != null and filterClassName != 'All Classes'}" th:href="@{/student/quizzes}"
+           class="text-sm font-medium text-purple-600 hover:text-purple-800 hover:underline">
+            Show All Quizzes
+        </a>
+    </div>
+
+    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+    <div class="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                     <tr>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quiz Title</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time Limit</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200 text-gray-700">
+                    <tr th:each="quiz : ${quizzes}" th:if="${!quizzes.isEmpty()}" class="hover:bg-gray-50 transition-colors duration-150">
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600" th:text="${quiz.schoolClass?.name}">Class Name</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" th:text="${quiz.title}">Quiz Title</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600" th:text="${quiz.dueDate != null ? #temporals.format(quiz.dueDate, 'yyyy-MM-dd HH:mm') : 'N/A'}">Due Date</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600" th:text="${quiz.timeLimitMinutes != null ? quiz.timeLimitMinutes + ' min' : 'None'}">Limit</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm">
+                            <th:block th:with="attempt=${attemptMap != null ? attemptMap.get(quiz.id) : null}, isPastDue=${quiz.dueDate != null and #temporals.createNow().isAfter(quiz.dueDate)}">
+                                <span th:if="${attempt == null and isPastDue}" class="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap bg-red-100 text-red-800">Past Due</span>
+                                <span th:if="${attempt == null and !isPastDue}" class="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap bg-blue-100 text-blue-800">Not Started</span>
+                                <span th:if="${attempt != null and attempt.status.name() == 'IN_PROGRESS' and !isPastDue}" class="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap bg-yellow-100 text-yellow-800">In Progress</span>
+                                <span th:if="${attempt != null and attempt.status.name() == 'IN_PROGRESS' and isPastDue}" class="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap bg-red-100 text-red-800">In Progress (Past Due)</span>
+                                <span th:if="${attempt != null and attempt.status.name() == 'SUBMITTED'}" class="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap bg-green-100 text-green-800">Submitted</span>
+                                <span th:if="${attempt != null and attempt.status.name() == 'GRADED'}" class="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap bg-purple-100 text-purple-800">Graded</span>
+                            </th:block>
+                        </td>
+                         <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold">
+                             <th:block th:with="attempt=${attemptMap != null ? attemptMap.get(quiz.id) : null}">
+                                 <span th:if="${attempt != null and attempt.score != null}"
+                                       th:text="${#numbers.formatDecimal(attempt.score, 1, 1)} + '/' + ${attempt.maxScore}">
+                                       8.0/10
+                                 </span>
+                                 <span th:if="${attempt != null and attempt.score == null and attempt.status.name() == 'SUBMITTED'}" class="text-xs text-gray-500 italic">Pending Grade</span>
+                                 <span th:if="${attempt == null}" class="text-xs text-gray-400">-</span>
+                             </th:block>
+                         </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm">
+                            <th:block th:with="attempt=${attemptMap != null ? attemptMap.get(quiz.id) : null}, isPastDue=${quiz.dueDate != null and #temporals.createNow().isAfter(quiz.dueDate)}">
+                                <a th:if="${attempt == null and !isPastDue}"
+                                   th:href="@{/student/quizzes/{quizId}/take(quizId=${quiz.id})}"
+                                   class="inline-flex items-center justify-center px-3 py-1.5 rounded-md text-sm font-medium border shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 bg-green-500 hover:bg-green-600 text-white border-green-600 focus:ring-green-500">
+                                    <i class="fas fa-play mr-1"></i> Start Quiz
+                                </a>
+                                <a th:if="${attempt != null and attempt.status.name() == 'IN_PROGRESS' and !isPastDue}"
+                                   th:href="@{/student/quizzes/{quizId}/take(quizId=${quiz.id})}"
+                                   class="inline-flex items-center justify-center px-3 py-1.5 rounded-md text-sm font-medium border shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-600 focus:ring-yellow-500">
+                                    <i class="fas fa-edit mr-1"></i> Continue
+                                </a>
+                                 <a th:if="${attempt != null and (attempt.status.name() == 'SUBMITTED' or attempt.status.name() == 'GRADED')}"
+                                   th:href="@{/student/quizzes/result/{attemptId}(attemptId=${attempt.id})}"
+                                   class="inline-flex items-center justify-center px-3 py-1.5 rounded-md text-sm font-medium border shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 bg-indigo-500 hover:bg-indigo-600 text-white border-indigo-600 focus:ring-indigo-500">
+                                    <i class="fas fa-poll-h mr-1"></i> View Result
+                                </a>
+                                 <button th:if="${(attempt == null or attempt.status.name() == 'IN_PROGRESS') and isPastDue}"
+                                         class="inline-flex items-center justify-center px-3 py-1.5 rounded-md text-sm font-medium border shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed opacity-70 shadow-none" disabled>
+                                     Past Due
+                                 </button>
+                            </th:block>
+                        </td>
+                    </tr>
+                    <tr th:if="${quizzes.isEmpty()}">
+                        <td colspan="8" class="px-6 py-8 text-center text-sm text-gray-500 italic">
+                            No quizzes found for this class filter.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="mt-6 text-center">
+         <a th:href="@{/dashboard}" class="text-sm font-medium text-purple-600 hover:text-purple-800 hover:underline">&larr; Back to Dashboard</a>
+    </div>
+</main>
+
+</body>
+</html>

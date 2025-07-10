@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::title}, ~{::main})}">
+
+<head>
+    <title th:text="'Gradebook - ' + ${schoolClass.name}">Class Gradebook</title>
+    <style>
+        /* Custom styles for gradebook table */
+        .gradebook-table th, .gradebook-table td {
+            @apply px-2 py-2 text-xs border border-gray-200 text-center whitespace-nowrap align-middle; /* Added align-middle */
+        }
+        .gradebook-table th {
+            @apply bg-gray-100 font-semibold text-gray-600 uppercase tracking-wider align-bottom;
+            /* Allow text wrapping for long titles */
+            white-space: normal;
+            min-width: 80px; /* Minimum width for item columns */
+        }
+        /* Styling for the student name and ID column */
+        .gradebook-table td.student-name-id {
+            @apply text-left whitespace-normal;
+            min-width: 180px; /* Adjusted width */
+        }
+         .gradebook-table td.student-name-id a {
+             @apply block font-medium text-sm text-gray-800 hover:text-purple-700 hover:underline mb-0.5;
+         }
+         .gradebook-table td.student-name-id span.student-id {
+             @apply block text-xs text-gray-500; /* Style for the ID */
+         }
+
+        .gradebook-table tbody tr:hover {
+             background-color: #f9fafb; /* bg-gray-50 */
+        }
+        /* Grade display styles */
+        .grade-cell {
+            @apply font-semibold;
+        }
+        .grade-pass { @apply text-green-700; }
+        .grade-fail { @apply text-red-700; }
+        .grade-pending { @apply text-blue-600 italic text-xs; } /* Submitted, not graded */
+        .grade-not-submitted { @apply text-gray-400 italic text-xs; }
+        .grade-in-progress { @apply text-yellow-600 italic text-xs; }
+        .quiz-score { /* Specific style for quiz scores like 8.5/10 */
+            @apply text-xs;
+        }
+        .item-title-link { /* Style for links in header */
+            @apply text-purple-600 hover:text-purple-800 hover:underline;
+        }
+    </style>
+</head>
+
+<body>
+    <main th:fragment="main">
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 pb-3 border-b border-gray-200">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-2 sm:mb-0" th:text="'Gradebook: ' + ${schoolClass.name}">Class Gradebook</h2>
+            <a th:href="@{/teacher/classes}" class="text-sm text-purple-600 hover:underline">
+                 &larr; Back to My Classes
+             </a>
+        </div>
+
+        <div th:if="${students.isEmpty()}" class="text-center text-gray-500 py-10 italic border border-dashed border-gray-300 rounded-lg">
+            No students enrolled in this class yet.
+        </div>
+
+        <div th:unless="${students.isEmpty()}" class="table-container bg-white gradebook-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="text-left !align-middle">Student (ID)</th>
+                        <th th:each="assignment : ${assignments}" th:title="${assignment.title}">
+                            <a th:href="@{/teacher/assignments/{id}/submissions(id=${assignment.id})}" class="item-title-link block">
+                                <i class="fas fa-file-alt text-gray-400 block mx-auto mb-1"></i>
+                                <span class="block" th:text="${#strings.abbreviate(assignment.title, 20)}">Assignment</span>
+                            </a>
+                        </th>
+                        <th th:each="quiz : ${quizzes}" th:title="${quiz.title}">
+                             <a th:href="@{/teacher/quizzes/{quizId}/attempts(quizId=${quiz.id})}" class="item-title-link block"> <i class="fas fa-question-circle text-gray-400 block mx-auto mb-1"></i>
+                                <span class="block" th:text="${#strings.abbreviate(quiz.title, 20)}">Quiz</span>
+                             </a>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="student : ${students}">
+                        <td class="student-name-id">
+                           <a th:href="@{/profile/{username}(username=${student.username})}" th:text="${student.firstName + ' ' + student.lastName}"></a>
+                           <span class="student-id" th:text="'ID: ' + ${student.studentId ?: 'N/A'}">ID: 12345</span> </td>
+                        <td th:each="assignment : ${assignments}">
+                            <th:block th:with="submission=${submissionsByStudent.get(student.id)?.get(assignment.id)}">
+                                <span th:if="${submission == null}" class="grade-not-submitted">Not Submitted</span>
+                                <span th:if="${submission != null and submission.grade == null}" class="grade-pending">Submitted</span>
+                                <span th:if="${submission != null and submission.grade != null}"
+                                      class="grade-cell"
+                                      th:classappend="${submission.numericalGrade != null and submission.numericalGrade >= 60 ? 'grade-pass' : 'grade-fail'}"
+                                      th:text="${submission.grade}">
+                                      85.0
+                                </span>
+                            </th:block>
+                        </td>
+                        <td th:each="quiz : ${quizzes}">
+                             <th:block th:with="attempt=${attemptsByStudent.get(student.id)?.get(quiz.id)}">
+                                <span th:if="${attempt == null}" class="grade-not-submitted">Not Started</span>
+                                <span th:if="${attempt != null and attempt.status.name() == 'IN_PROGRESS'}" class="grade-in-progress">In Progress</span>
+                                <span th:if="${attempt != null and attempt.status.name() == 'SUBMITTED'}" class="grade-pending">Submitted</span>
+                                <span th:if="${attempt != null and attempt.status.name() == 'GRADED'}"
+                                      class="grade-cell quiz-score"
+                                      th:classappend="${attempt.score != null and attempt.maxScore != null and attempt.maxScore > 0 and (attempt.score / attempt.maxScore * 100) >= 60 ? 'grade-pass' : 'grade-fail'}"
+                                      th:text="${(attempt.score != null ? #numbers.formatDecimal(attempt.score, 1, 1) : 'N/A') + '/' + (attempt.maxScore != null ? attempt.maxScore : '?')}">
+                                      8.5/10
+                                </span>
+                             </th:block>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+         <div class="mt-8 text-center">
+             <a th:href="@{/dashboard}" class="text-sm text-purple-600 hover:underline">&larr; Back to Dashboard</a>
+        </div>
+    </main>
+</body>
+</html>

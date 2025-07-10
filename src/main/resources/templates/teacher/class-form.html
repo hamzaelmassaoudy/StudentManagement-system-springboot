@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::title}, ~{::main})}">
+
+<head>
+    <title>Create New Class</title>
+    <style>
+        /* Input field styling */
+         .form-input {
+              @apply w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm placeholder-gray-400;
+         }
+         label {
+             @apply block text-sm font-medium text-gray-700 mb-1.5;
+         }
+    </style>
+</head>
+
+<body>
+
+    <main th:fragment="main" class="px-4 py-6 md:px-6 md:py-8 lg:py-10">
+        <div class="mb-6 pb-3 border-b border-gray-300 max-w-lg mx-auto text-center">
+             <h2 class="text-2xl md:text-3xl font-bold text-gray-800 flex items-center justify-center gap-2">
+                 <i class="fas fa-plus-circle text-purple-600"></i>
+                 Create New Class
+             </h2>
+        </div>
+
+        <div class="bg-white shadow-xl rounded-xl border border-gray-200/80 p-6 md:p-8 max-w-lg mx-auto">
+            <div th:if="${errorMessage}" class="alert alert-danger mb-4" th:text="${errorMessage}">
+                Error message placeholder
+            </div>
+
+            <form th:action="@{/teacher/classes/create}" th:object="${classDto}" method="post" enctype="multipart/form-data" class="space-y-5">
+
+                <div>
+                    <label for="name">Class Name</label>
+                    <input type="text" id="name" th:field="*{name}" required
+                           class="form-input"
+                           placeholder="e.g., Math 101, History 202">
+                    </div>
+
+                <div>
+                    <label for="description">Description (Optional)</label>
+                    <textarea id="description" th:field="*{description}" rows="3"
+                              class="form-input"
+                              placeholder="Briefly describe the class content"></textarea>
+                </div>
+
+                <div>
+                    <label for="joinPassword">Join Password (Optional)</label>
+                    <input type="password" id="joinPassword" th:field="*{joinPassword}"
+                           class="form-input"
+                           placeholder="Leave blank if no password needed">
+                    <p class="text-xs text-gray-500 mt-1">If set, students will need this password to join.</p>
+                    </div>
+                <div>
+                     <label for="classImageFile">Class Image (Optional)</label>
+                     <input type="file" id="classImageFile" name="classImageFile" accept="image/png, image/jpeg, image/gif"
+                            class="block w-full text-xs text-gray-600 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500
+                                   file:mr-4 file:py-2 file:px-4 file:rounded-l-lg file:border-0 file:text-xs file:font-semibold
+                                   file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
+                     <p class="text-xs text-gray-500 mt-1">Upload an image for the class card.</p>
+                 </div>
+                 <div class="flex items-center justify-end space-x-3 pt-5 border-t border-gray-200 mt-6">
+                     <a th:href="@{/teacher/classes}"
+                       class="btn btn-secondary"> Cancel
+                    </a>
+                    <button type="submit"
+                            class="btn btn-primary"> <i class="fas fa-plus mr-2"></i> Create Class
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+</body>
+</html>

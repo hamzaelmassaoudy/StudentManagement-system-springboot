@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::title}, ~{::main})}">
+
+<head>
+    <title th:text="'Grade Quiz Attempt: ' + ${quiz.title} + ' - ' + ${attemptDto.studentFullName}">Grade Quiz Attempt</title>
+    </head>
+
+<body>
+
+<main th:fragment="main">
+    <div class="mb-6 pb-4 border-b border-gray-200">
+        <h2 class="text-2xl font-bold text-gray-800" th:text="'Grading Attempt for: ' + ${quiz.title}">Grading Attempt</h2>
+        <p class="text-sm text-gray-600 mt-1">
+            Student: <strong th:text="${attemptDto.studentFullName}">Student Name</strong>
+            (<span th:text="${attemptDto.studentUsername}">student@email.com</span>)
+        </p>
+        <p class="text-xs text-gray-500 mt-1">
+            Attempt Submitted: <span th:text="${attemptDto.endTime != null ? #temporals.format(attemptDto.endTime, 'MMM dd, HH:mm') : 'N/A'}">Timestamp</span>
+        </p>
+    </div>
+
+    <div th:if="${errorMessage}" class="alert alert-danger mb-4" th:text="${errorMessage}"></div>
+
+    <form th:action="@{/teacher/attempts/{attemptId}/grade(attemptId=${attemptDto.id})}"
+          th:object="${gradeAttemptDto}" method="post">
+
+        <input type="hidden" th:field="*{attemptId}" />
+
+        <div th:if="${#fields.hasGlobalErrors()}" class="alert alert-danger mb-4">
+            <p>Please correct the errors below:</p>
+            <ul>
+                <li th:each="err : ${#fields.globalErrors()}" th:text="${err}">Global error message</li>
+            </ul>
+        </div>
+
+        <div th:each="answerRes, stat : ${attemptDto.answerResults}"
+             class="bg-white p-5 mb-5 rounded-lg border border-gray-200 shadow-sm">
+
+            <input type="hidden" th:field="*{answerGrades[__${stat.index}__].questionId}" />
+            <input type="hidden" th:field="*{answerGrades[__${stat.index}__].maxPoints}" />
+
+            <div class="flex justify-between items-baseline mb-2">
+                 <p class="text-base font-semibold text-gray-800 mb-2">
+                     <strong th:text="${stat.index + 1} + '. '">1. </strong>
+                     <span th:text="${answerRes.questionText}">Question text...</span>
+                 </p>
+                 <span class="text-xs text-gray-500 font-normal" th:text="'(' + ${answerRes.questionPoints} + ' points)'">(1 points)</span>
+            </div>
+
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Student's Answer:</label>
+                <pre class="block w-full bg-gray-50 border border-gray-200 rounded-md p-3 mt-2 mb-3 text-sm text-gray-700 whitespace-pre-wrap"
+                     style="min-height: 60px;"
+                     th:text="${answerRes.studentAnswerText != null ? answerRes.studentAnswerText : '(Not Answered)'}">Student answer text here.</pre>
+            </div>
+
+            <div class="mt-3">
+                <label th:for="'pointsAwarded' + ${stat.index}" class="block text-sm font-medium text-gray-700 mb-1">Points Awarded:</label>
+                <input type="number" th:id="'pointsAwarded' + ${stat.index}"
+                       th:field="*{answerGrades[__${stat.index}__].pointsAwarded}"
+                       required
+                       min="0"
+                       th:max="${answerRes.questionPoints}"
+                       step="0.1"
+                       class="w-24 px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-sm"
+                       th:classappend="${#fields.hasErrors('answerGrades[__${stat.index}__].pointsAwarded')} ? 'border-red-500 ring-1 ring-red-500' : ''"
+                       placeholder="Score"/>
+                 <p th:if="${#fields.hasErrors('answerGrades[__${stat.index}__].pointsAwarded')}"
+                    class="text-xs text-red-600 mt-1"
+                    th:errors="*{answerGrades[__${stat.index}__].pointsAwarded}">Error message</p>
+            </div>
+
+        </div> <div class="mt-8 flex justify-end items-center space-x-3">
+            <a th:href="@{/teacher/quizzes/{quizId}/attempts(quizId=${quiz.id})}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-save mr-2"></i> Save Grades
+            </button>
+        </div>
+    </form> </main> </body>
+</html>

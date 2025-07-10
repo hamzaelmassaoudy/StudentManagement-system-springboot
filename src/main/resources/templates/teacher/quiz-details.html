@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::title}, ~{::main})}">
+
+<head>
+    <title th:text="'Quiz Details: ' + ${quiz.title}">Quiz Details</title>
+    </head>
+
+<body>
+
+<main th:fragment="main">
+    <div class="flex flex-col sm:flex-row justify-between items-start mb-6 pb-4 border-b border-gray-200">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800" th:text="${quiz.title}">Quiz Title</h2>
+            <p class="text-sm text-gray-600 mt-1" th:text="${quiz.description}">Quiz description...</p>
+            <p class="text-xs text-gray-500 mt-1">
+                Class: <span th:text="${quiz.schoolClass?.name}">Class Name</span> |
+                Due: <span th:text="${quiz.dueDate != null ? #temporals.format(quiz.dueDate, 'MMM dd, HH:mm') : 'N/A'}">Due Date</span> |
+                Time Limit: <span th:text="${quiz.timeLimitMinutes != null ? quiz.timeLimitMinutes + ' min' : 'None'}">Limit</span>
+            </p>
+        </div>
+        <div class="mt-3 sm:mt-0 flex items-center space-x-2">
+             <a th:href="@{/teacher/classes/{classId}/quizzes(classId=${quiz.schoolClass.id})}" class="btn btn-secondary btn-sm">
+                 &larr; Back to Quizzes
+             </a>
+             <a href="#" th:href="@{/teacher/quizzes/{quizId}/edit(quizId=${quiz.id})}" class="btn btn-warning btn-sm">
+                 <i class="fas fa-edit mr-1"></i> Edit
+             </a>
+             <a href="#" th:href="@{/teacher/quizzes/{quizId}/attempts(quizId=${quiz.id})}" class="btn btn-info btn-sm">
+                 <i class="fas fa-list-ol mr-1"></i> View Attempts
+             </a>
+        </div>
+    </div>
+
+    <h3 class="text-xl font-semibold text-gray-700 mb-4">Quiz Questions</h3>
+    <div th:if="${quiz.questions != null and !quiz.questions.isEmpty()}">
+        <div th:each="question, qStat : ${quiz.questions}"
+             class="bg-white p-5 mb-4 rounded-lg border border-gray-200 shadow-sm">
+            <p class="text-base font-semibold text-gray-800 mb-2">
+                <strong th:text="${qStat.index + 1} + '. '">1. </strong>
+                <span th:text="${question.questionText}">Question text goes here...</span>
+            </p>
+            <p class="text-xs text-gray-500 mb-3 border-b pb-2">
+                 Type: <span class="font-medium" th:text="${#strings.capitalizeWords(#strings.toLowerCase(question.questionType.name().replace('_', ' ')))}">Short Answer</span> |
+                 Points: <span class="font-medium" th:text="${question.points}">1</span>
+            </p>
+
+            <div class="text-sm text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-200">
+                (Short Answer Question - Requires manual grading)
+            </div>
+
+        </div> </div>
+    <div th:unless="${quiz.questions != null and !quiz.questions.isEmpty()}" class="text-center text-gray-500 italic py-4">
+        This quiz currently has no questions.
+    </div>
+
+     <div class="mt-8 text-center">
+         <a th:href="@{/dashboard}" class="text-sm text-purple-600 hover:underline">&larr; Back to Dashboard</a>
+    </div>
+
+</main> </body>
+</html>

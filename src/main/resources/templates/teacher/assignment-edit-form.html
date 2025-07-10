@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::title}, ~{::main})}">
+<head>
+    <title th:text="'Edit Assignment: ' + ${assignmentDto.title}">Edit Assignment</title>
+    </head>
+<body>
+
+    <main th:fragment="main">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-1" th:text="'Edit Assignment'">Edit Assignment</h2>
+        <p class="text-sm text-gray-500 mb-6" th:text="${assignmentDto.title}">Original Assignment Title</p>
+
+        <div class="content-card p-6 max-w-lg mx-auto">
+
+            <div th:if="${errorMessage}" class="alert alert-danger mb-4" th:text="${errorMessage}"></div>
+
+            <form th:action="@{/teacher/assignments/update/{id}(id=${assignmentId})}"
+                  th:object="${assignmentDto}"
+                  method="post"
+                  enctype="multipart/form-data"
+                  class="space-y-4">
+
+                <div>
+                    <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Assignment Title</label>
+                    <input type="text" id="title" th:field="*{title}" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                           placeholder="Enter a clear and concise title">
+                </div>
+
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description / Instructions</label>
+                    <textarea id="description" th:field="*{description}" rows="6"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                              placeholder="Provide detailed instructions..."></textarea>
+                </div>
+
+                <div>
+                     <label for="dueDate" class="block text-sm font-medium text-gray-700 mb-1">Due Date and Time</label>
+                     <input type="datetime-local" id="dueDate" th:field="*{dueDate}" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500">
+                </div>
+
+                <div>
+                    <label for="attachmentFile" class="block text-sm font-medium text-gray-700 mb-2">Change Attachment (Optional)</label>
+                    <div class="mb-2 p-3 bg-gray-100 border border-gray-200 rounded-md text-sm">
+                        <span th:if="${existingAttachmentFilename != null}">
+                            Current file: <strong class="text-gray-800" th:text="${existingAttachmentFilename}">filename.pdf</strong>
+                        </span>
+                        <span th:unless="${existingAttachmentFilename != null}" class="text-gray-500 italic">
+                            No current attachment.
+                        </span>
+                    </div>
+                    <input type="file" id="attachmentFile" name="attachmentFile">
+                     <p class="text-xs text-gray-500 mt-1">Select a new file to replace the current one. Max file size: 10MB.</p>
+                </div>
+
+                <div class="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200 mt-6">
+                     <a th:href="@{/teacher/assignments/class/{id}(id=${classId})}"
+                       class="btn btn-secondary btn-sm">
+                        Cancel
+                    </a>
+                    <button type="submit"
+                            class="btn btn-primary">
+                        Update Assignment
+                    </button>
+                </div>
+            </form>
+            </div>
+        </main>
+
+</body>
+</html>
